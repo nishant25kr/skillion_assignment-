@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const ResumeSchema = new mongoose.Schema({
     text: { 
         type: String,
-        required: true 
+        required: false
     },       
     embedding: { 
         type: [Number], 

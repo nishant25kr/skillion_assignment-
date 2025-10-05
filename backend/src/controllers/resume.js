@@ -1,25 +1,13 @@
-import { GoogleGenAI } from '@google/genai';
+import embedding from "../ai/agent.js";
 import Resume from "../models/Resume.js";
 import extractText from "../utils/extractText.js";
 
-const api_Key = process.env.GEMINI_API_KEY;
-
-const ai = new GoogleGenAI({ apiKey: api_Key });
-
-
-// ✅ Define generation configuration
-const generationConfig = {
-    temperature: 0.9,
-    topP: 1,
-    topK: 1,
-    maxOutputTokens: 4096,
-};
-
-// ✅ Define the model configuration
-const modelConfig = {
-    model: "gemini-2.5-pro",
-    generationConfig,
-};
+function cosineSimilarity(vecA, vecB) {
+    const dot = vecA.reduce((sum, val, i) => sum + val * vecB[i], 0);
+    const magA = Math.sqrt(vecA.reduce((sum, val) => sum + val * val, 0));
+    const magB = Math.sqrt(vecB.reduce((sum, val) => sum + val * val, 0));
+    return dot / (magA * magB);
+}
 
 const uploadResume = async (req, res) => {
     try {
@@ -29,31 +17,68 @@ const uploadResume = async (req, res) => {
 
         const text = await extractText(req.file);
 
-        
-        // ✅ Generate content using the model
-        // const response = await ai.models.embedContent(modelConfig, text);
-        
-        const response = await ai.models.embedContent(modelConfig,{
-            input: [text], // ✅ must be an array
-        });
-        console.log(response)
+        if (!text || text.trim() === "") {
+            return res.status(400).json({ success: false, message: "Extracted text is empty" });
+        }
 
-        // ✅ Assuming Gemini returns JSON array of numbers as string
-        const embedding = JSON.parse(response.text());
+        const response = await embedding(text);
 
-        const resume = new Resume({
-            text,
-            embedding,
-            metadata: { filename: req.file.originalname },
-        });
+        if (!response) {
+            return res.status(500).json({
+                success: false,
+                message: "Embedding generation failed — cannot save resume."
+            });
+        }
 
-        await resume.save();
+        const embeddingVector = response[0].values;
+        console.log('reponse of route', embeddingVector);
 
-        res.json({ success: true, message: "Resume uploaded and embedded with Gemini!" });
+        const newResume = new Resume(
+            {
+                text: "resume",
+                embedding: embeddingVector
+            }
+        );
+        await newResume.save();
+
+
+        res.json({ success: true, message: "Resume uploaded and embedded!", embeddingLength: embedding.length });
     } catch (err) {
         console.error("Upload error:", err);
-        res.status(500).json({ success: false, message: "Resume upload failed" });
+        res.status(500).json({ success: false, message: err.message || "Resume upload failed" });
     }
 };
+const getResume = async (req, res) => {
+  try {
+    const { query } = req.body;
+    console.log("Query:", query);
 
-export { uploadResume };
+    if (!query || query.trim() === "") {
+      return res.status(400).json({ error: "Query text is required" });
+    }
+
+    const response = await embedding(query);
+    const embeddingVector = response[0].values;
+    console.log("Embedding vector:", embeddingVector);
+
+    const resumes = await Resume.find(); 
+
+    const scored = resumes.map((doc) => ({
+      ...doc.toObject(), 
+      score: cosineSimilarity(embeddingVector, doc.embedding),
+    }));
+
+    scored.sort((a, b) => b.score - a.score);
+
+    return res.json(scored.slice(0, 5));
+
+  } catch (err) {
+    console.error("Error searching resumes:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+export {
+    uploadResume,
+    getResume
+};
