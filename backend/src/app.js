@@ -14,22 +14,25 @@ app.use(express.json());
 app.use(cookieParser())
 app.use(
   cors({
-    origin: "http://localhost:5173", 
+    origin: [
+      "http://localhost:5173",
+      "https://skillion-assignment.vercel.app"
+    ],
     credentials: true,
   })
 );
 
 
-app.get("/",(req,res)=>{
-    res.send("Hi this is skillion server")
+app.get("/", (req, res) => {
+  res.send("Hi this is skillion server")
 })
 
 import ResumeRouter from "./routes/resume.js"
 import UserRouter from "./routes/user.js"
 
-app.use("/api/resume",ResumeRouter)
+app.use("/api/resume", ResumeRouter)
 
-app.use("/api/user",UserRouter)
+app.use("/api/user", UserRouter)
 
 export { app }
 
