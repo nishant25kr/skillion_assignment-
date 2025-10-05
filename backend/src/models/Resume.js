@@ -16,6 +16,12 @@ const ResumeSchema = new mongoose.Schema({
             default: Date.now 
         },
     },
+    isSortlisted:{
+        type:Boolean,
+        default:false
+    },
+    pdfPath: String, 
+
     
 });
 
