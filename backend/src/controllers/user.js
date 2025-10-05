@@ -36,20 +36,22 @@ const register = async (req, res) => {
         return res.status(400).json({ Message: "User already exist with this email" })
     }
 
-    const hashedpassword = bcrypt.hash(password);
+    const hashedpassword = await bcrypt.hash(password,10);
 
     const user = await User.create(
         {
-            fullname,
+            name,
             email,
             password: hashedpassword,
             userType
         }
     )
 
-    const { accessToken, refreshToken } = generateAccessandRefreshToken(user._id);
+    const usercreate = await User.findById(user._id).select(
+        "-password -refreshToken"
+    );
 
-    if (!user) {
+    if (!usercreate) {
         return res.status(400).json(
             { Error: "Error while creating User in db" }
         )
@@ -57,15 +59,10 @@ const register = async (req, res) => {
 
     return res.status(200).json(
         {
-            user: user,
-            accessToken: accessToken,
-            refreshToken: refreshToken,
+            user: usercreate,
             Message: "User created successfully"
         }
     )
-
-
-
 
 }
 
@@ -102,8 +99,15 @@ const loginuser = async (req, res) => {
 
     const LoggedInUser = await User.findById(user._id).select("-password -refreshToken")
 
+     const option = {
+        httpOnly: true,
+        secure: true
+    }
+
     return res
         .status(200)
+        .cookie("accessToken", accessToken, option)
+        .cookie("refreshToken", refreshToken, option)
         .json(
             {
                 user: LoggedInUser,
@@ -119,7 +123,7 @@ const loginuser = async (req, res) => {
 const logoutUser = async (req, res) => {
 
     await User.findByIdAndUpdate(
-        req.user._id,
+        req.user?._id,
         {
             $set: {
                 refreshtoken: undefined,
@@ -136,9 +140,9 @@ const logoutUser = async (req, res) => {
 
     return res
         .status(200)
-        .clearCookie("accesstoken", option)
-        .clearCookie("refreshtoken", option)
-        .json(new ApiResponse(200, {}, "User logged out "))
+        .clearCookie("accessToken", option)
+        .clearCookie("refreshToken", option)
+        .json({message:"User logged out "})
 }
 
 export {

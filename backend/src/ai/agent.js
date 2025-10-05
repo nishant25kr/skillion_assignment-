@@ -14,7 +14,6 @@ async function embedding(testInput) {
 
     return response.embeddings
 
-    // console.log("response of dummy",response.embeddings);
 }
 
 export default embedding
