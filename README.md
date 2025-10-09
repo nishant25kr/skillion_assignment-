@@ -28,10 +28,4 @@ It combines **Embeddings**, **Vector Search**, and **LLM-powered responses** to 
 - OpenAI API (for embeddings + generation)
 - dotenv for configuration
 
-**Vector Search:**
-- MongoDB or custom vector similarity logic (can be extended to Pinecone / ChromaDB)
-
----
-
-## 📁 Project Structure
 
